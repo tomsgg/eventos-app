@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Gestor de Eventos PRO</title>
+
+<style>
+body { font-family: Arial; padding: 20px; }
+button { margin: 3px; padding: 6px; cursor: pointer; }
+.dia { display:inline-block; width:40px; height:40px; line-height:40px; text-align:center; border:1px solid #ccc; margin:2px; cursor:pointer; }
+.seleccionado { background-color: lightgreen; }
+.caja { border:1px solid #ccc; padding:10px; margin:10px 0; }
+.rojo { color: red; font-weight: bold; }
+</style>
+
+</head>
+<body>
+
+<h2>📅 Seleccionar días de eventos</h2>
+<div id="calendario"></div>
+
+<hr>
+
+<h2>⚙️ Configurar eventos</h2>
+<div id="configEventos"></div>
+
+<hr>
+
+<h2>👥 Empleados</h2>
+
+<input type="text" id="nombre" placeholder="Nombre">
+<input type="text" id="dias" placeholder="Días (ej: 1,2,8)">
+<button onclick="agregarEmpleado()">Agregar</button>
+
+<ul id="listaEmpleados"></ul>
+
+<hr>
+
+<button onclick="calcular()">CALCULAR</button>
+
+<div id="resultado"></div>
+
+<script>
+
+let diasSeleccionados = JSON.parse(localStorage.getItem("diasSeleccionados")) || [];
+let empleados = JSON.parse(localStorage.getItem("empleados")) || [];
+
+// calendario
+for(let i=1;i<=31;i++){
+    let d = document.createElement("div");
+    d.className = "dia";
+    d.textContent = i;
+
+    if(diasSeleccionados.includes(i)){
+        d.classList.add("seleccionado");
+    }
+
+    d.onclick = () => {
+        if(diasSeleccionados.includes(i)){
+            diasSeleccionados = diasSeleccionados.filter(x => x !== i);
+            d.classList.remove("seleccionado");
+        } else {
+            diasSeleccionados.push(i);
+            d.classList.add("seleccionado");
+        }
+        guardar();
+        actualizarEventos();
+        renderEmpleados();
+    };
+
+    document.getElementById("calendario").appendChild(d);
+}
+
+// guardar datos
+function guardar(){
+    localStorage.setItem("diasSeleccionados", JSON.stringify(diasSeleccionados));
+    localStorage.setItem("empleados", JSON.stringify(empleados));
+
+    let necesarios = {};
+    diasSeleccionados.forEach(dia => {
+        let val = document.getElementById(`necesarios-${dia}`);
+        if(val){
+            necesarios[dia] = val.value;
+        }
+    });
+
+    localStorage.setItem("necesarios", JSON.stringify(necesarios));
+}
+
+// eventos
+function actualizarEventos(){
+    let cont = document.getElementById("configEventos");
+    cont.innerHTML = "";
+
+    let necesariosGuardados = JSON.parse(localStorage.getItem("necesarios")) || {};
+
+    diasSeleccionados.forEach(dia => {
+        cont.innerHTML += `
+        <div class="caja">
+        Día ${dia} → 
+        <input type="number" id="necesarios-${dia}" 
+        value="${necesariosGuardados[dia] || ""}"
+        onchange="guardar()"
+        placeholder="Empleados necesarios">
+        </div>`;
+    });
+}
+
+// agregar empleado
+function agregarEmpleado(){
+    let nombre = document.getElementById("nombre").value;
+    let dias = document.getElementById("dias").value;
+
+    empleados.push({nombre, dias});
+
+    document.getElementById("nombre").value = "";
+    document.getElementById("dias").value = "";
+
+    guardar();
+    renderEmpleados();
+}
+
+// render empleados
+function renderEmpleados(){
+    let lista = document.getElementById("listaEmpleados");
+    lista.innerHTML = "";
+
+    empleados.forEach((emp, index) => {
+
+        let diasArray = emp.dias.split(",").map(d => parseInt(d.trim()));
+
+        let diasHTML = diasArray.map(d => {
+            if(!diasSeleccionados.includes(d)){
+                return `<span class="rojo">${d}</span>`;
+            } else {
+                return d;
+            }
+        }).join(", ");
+
+        lista.innerHTML += `
+        <li>
+        <strong>${emp.nombre}</strong> → ${diasHTML}
+        <button onclick="editar(${index})">Editar</button>
+        </li>
+        `;
+    });
+}
+
+// editar
+function editar(index){
+    let nuevoNombre = prompt("Editar nombre:", empleados[index].nombre);
+    if(nuevoNombre === null) return;
+
+    let nuevosDias = prompt("Editar días (ej: 1,2,8):", empleados[index].dias);
+    if(nuevosDias === null) return;
+
+    empleados[index].nombre = nuevoNombre;
+    empleados[index].dias = nuevosDias;
+
+    guardar();
+    renderEmpleados();
+}
+
+// calcular
+function calcular(){
+    let resultado = document.getElementById("resultado");
+    resultado.innerHTML = "";
+
+    diasSeleccionados.forEach(dia => {
+        let necesarios = parseInt(document.getElementById(`necesarios-${dia}`).value);
+
+        let disponibles = empleados.filter(e => {
+            let dias = e.dias.split(",").map(Number);
+            return dias.includes(dia);
+        });
+
+        let div = document.createElement("div");
+        div.className = "caja";
+
+        let html = `<h3>Día ${dia}</h3>`;
+        html += `<p>Necesarios: ${necesarios}</p>`;
+
+        disponibles.forEach(e => {
+            html += `
+            <label>
+            <input type="checkbox" class="check-${dia}" value="${e.nombre}">
+            ${e.nombre}
+            </label><br>`;
+        });
+
+        html += `<button onclick="verSeleccion(${dia}, ${necesarios})">Confirmar</button>`;
+        html += `<div id="res-${dia}"></div>`;
+
+        div.innerHTML = html;
+        resultado.appendChild(div);
+    });
+}
+
+// ver seleccion
+function verSeleccion(dia, necesarios){
+    let checks = document.querySelectorAll(`.check-${dia}:checked`);
+    let seleccionados = Array.from(checks).map(c => c.value);
+
+    let div = document.getElementById(`res-${dia}`);
+
+    let html = `<p>Seleccionados (${seleccionados.length}): ${seleccionados.join(", ")}</p>`;
+
+    if(seleccionados.length < necesarios){
+        html += `<p style="color:red;">Faltan ${necesarios - seleccionados.length}</p>`;
+    } else if(seleccionados.length > necesarios){
+        html += `<p style="color:orange;">Sobran ${seleccionados.length - necesarios}</p>`;
+    } else {
+        html += `<p style="color:green;">Perfecto</p>`;
+    }
+
+    div.innerHTML = html;
+}
+
+// inicializar
+actualizarEventos();
+renderEmpleados();
+
+</script>
+
+</body>
+</html>
