@@ -18,6 +18,7 @@ button { margin: 3px; padding: 6px; cursor: pointer; }
 
 <h2>📅 Seleccionar días de eventos</h2>
 <div id="calendario"></div>
+<button onclick="borrarEventos()">🧹 Borrar eventos</button>
 
 <hr>
 
@@ -31,12 +32,14 @@ button { margin: 3px; padding: 6px; cursor: pointer; }
 <input type="text" id="nombre" placeholder="Nombre">
 <input type="text" id="dias" placeholder="Días (ej: 1,2,8)">
 <button onclick="agregarEmpleado()">Agregar</button>
+<button onclick="borrarEmpleados()">🧹 Borrar empleados</button>
 
 <ul id="listaEmpleados"></ul>
 
 <hr>
 
 <button onclick="calcular()">CALCULAR</button>
+<button onclick="borrarSeleccion()">🧹 Limpiar selección</button>
 
 <div id="resultado"></div>
 
@@ -71,7 +74,7 @@ for(let i=1;i<=31;i++){
     document.getElementById("calendario").appendChild(d);
 }
 
-// guardar datos
+// guardar
 function guardar(){
     localStorage.setItem("diasSeleccionados", JSON.stringify(diasSeleccionados));
     localStorage.setItem("empleados", JSON.stringify(empleados));
@@ -106,7 +109,7 @@ function actualizarEventos(){
     });
 }
 
-// agregar empleado
+// empleados
 function agregarEmpleado(){
     let nombre = document.getElementById("nombre").value;
     let dias = document.getElementById("dias").value;
@@ -120,7 +123,13 @@ function agregarEmpleado(){
     renderEmpleados();
 }
 
-// render empleados
+function borrarEmpleados(){
+    empleados = [];
+    guardar();
+    renderEmpleados();
+}
+
+// render
 function renderEmpleados(){
     let lista = document.getElementById("listaEmpleados");
     lista.innerHTML = "";
@@ -161,6 +170,14 @@ function editar(index){
     renderEmpleados();
 }
 
+// borrar eventos
+function borrarEventos(){
+    diasSeleccionados = [];
+    localStorage.removeItem("necesarios");
+    guardar();
+    location.reload();
+}
+
 // calcular
 function calcular(){
     let resultado = document.getElementById("resultado");
@@ -196,7 +213,12 @@ function calcular(){
     });
 }
 
-// ver seleccion
+// limpiar selección
+function borrarSeleccion(){
+    document.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = false);
+}
+
+// ver selección
 function verSeleccion(dia, necesarios){
     let checks = document.querySelectorAll(`.check-${dia}:checked`);
     let seleccionados = Array.from(checks).map(c => c.value);
@@ -216,7 +238,7 @@ function verSeleccion(dia, necesarios){
     div.innerHTML = html;
 }
 
-// inicializar
+// init
 actualizarEventos();
 renderEmpleados();
 
